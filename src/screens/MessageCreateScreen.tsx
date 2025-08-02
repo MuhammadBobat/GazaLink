@@ -7,35 +7,68 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Priority } from '../types';
+import { Priority, DeliveryStatus } from '../types';
+import { MessageStorage } from '../services/storage';
 
 interface MessageCreateScreenProps {
   navigation: any;
 }
 
 const MessageCreateScreen: React.FC<MessageCreateScreenProps> = ({ navigation }) => {
-  const [messageText, setMessageText] = useState('');
+  const [messageContent, setMessageContent] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority>(Priority.NORMAL);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateMessage = () => {
-    if (!messageText.trim()) {
+  const generateId = (): string => {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  };
+
+  const handleCreateMessage = async () => {
+    if (!messageContent.trim()) {
       Alert.alert('Error', 'Please enter a message');
       return;
     }
 
-    // Here you would typically save the message to local storage
-    // For now, we'll just show a success message and navigate back
-    Alert.alert(
-      'Success',
-      'Message created successfully!',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('MessageQueue'),
-        },
-      ]
-    );
+    setIsSubmitting(true);
+
+    try {
+      const newMessage = {
+        id: generateId(),
+        content: messageContent.trim(),
+        priority: selectedPriority,
+        timestamp: new Date().toISOString(),
+        deliveryStatus: DeliveryStatus.PENDING,
+      };
+
+      await MessageStorage.saveMessage(newMessage);
+
+      Alert.alert(
+        'Success',
+        'Message created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setMessageContent('');
+              setSelectedPriority(Priority.NORMAL);
+              navigation.navigate('MessageQueue');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error creating message:', error);
+      Alert.alert('Error', 'Failed to create message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClearForm = () => {
+    setMessageContent('');
+    setSelectedPriority(Priority.NORMAL);
   };
 
   return (
@@ -46,15 +79,16 @@ const MessageCreateScreen: React.FC<MessageCreateScreenProps> = ({ navigation })
       </View>
 
       <View style={styles.form}>
-        <Text style={styles.label}>Message Text</Text>
+        <Text style={styles.label}>Message Content</Text>
         <TextInput
           style={styles.textInput}
-          value={messageText}
-          onChangeText={setMessageText}
+          value={messageContent}
+          onChangeText={setMessageContent}
           placeholder="Enter your message here..."
           multiline
           numberOfLines={4}
           textAlignVertical="top"
+          editable={!isSubmitting}
         />
 
         <Text style={styles.label}>Priority</Text>
@@ -65,6 +99,7 @@ const MessageCreateScreen: React.FC<MessageCreateScreenProps> = ({ navigation })
               selectedPriority === Priority.NORMAL && styles.selectedPriority,
             ]}
             onPress={() => setSelectedPriority(Priority.NORMAL)}
+            disabled={isSubmitting}
           >
             <Text
               style={[
@@ -81,6 +116,7 @@ const MessageCreateScreen: React.FC<MessageCreateScreenProps> = ({ navigation })
               selectedPriority === Priority.URGENT && styles.urgentPriority,
             ]}
             onPress={() => setSelectedPriority(Priority.URGENT)}
+            disabled={isSubmitting}
           >
             <Text
               style={[
@@ -93,21 +129,41 @@ const MessageCreateScreen: React.FC<MessageCreateScreenProps> = ({ navigation })
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateMessage}>
-          <Text style={styles.createButtonText}>Create Message</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={[styles.createButton, isSubmitting && styles.disabledButton]} 
+            onPress={handleCreateMessage}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Text style={styles.createButtonText}>Create Message</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.clearButton} 
+            onPress={handleClearForm}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.clearButtonText}>Clear Form</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.navigation}>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => navigation.navigate('MessageQueue')}
+          disabled={isSubmitting}
         >
           <Text style={styles.navButtonText}>Message Queue</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => navigation.navigate('Dashboard')}
+          disabled={isSubmitting}
         >
           <Text style={styles.navButtonText}>Dashboard</Text>
         </TouchableOpacity>
@@ -188,16 +244,33 @@ const styles = StyleSheet.create({
   selectedPriorityText: {
     color: '#ffffff',
   },
+  buttonContainer: {
+    marginTop: 30,
+  },
   createButton: {
     backgroundColor: '#27ae60',
     padding: 15,
     borderRadius: 8,
-    marginTop: 30,
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#95a5a6',
   },
   createButtonText: {
     color: '#ffffff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  clearButton: {
+    backgroundColor: '#95a5a6',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
   navigation: {

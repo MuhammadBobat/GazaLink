@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,65 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { AppStats } from '../types';
+import { AppStats, Priority, DeliveryStatus } from '../types';
+import { MessageStorage } from '../services/storage';
+import { addSampleData, clearAllData } from '../utils/sampleData';
 
 interface DashboardScreenProps {
   navigation: any;
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
-  // Mock data for demonstration
-  const stats: AppStats = {
-    totalMessages: 15,
-    pendingMessages: 3,
-    urgentMessages: 2,
+  const [stats, setStats] = useState<AppStats>({
+    totalMessages: 0,
+    pendingMessages: 0,
+    urgentMessages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load stats on mount
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  // Load stats when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadStats();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const loadStats = async () => {
+    try {
+      setLoading(true);
+      const messages = await MessageStorage.getMessages();
+      
+      const totalMessages = messages.length;
+      const pendingMessages = messages.filter(msg => msg.deliveryStatus === DeliveryStatus.PENDING).length;
+      const urgentMessages = messages.filter(msg => msg.priority === Priority.URGENT).length;
+
+      setStats({
+        totalMessages,
+        pendingMessages,
+        urgentMessages,
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadStats();
+    setRefreshing(false);
   };
 
   const bluetoothStatus = {
@@ -34,6 +80,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Dashboard</Text>
+          <Text style={styles.subtitle}>Offline Bluetooth P2P Communication</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498db" />
+          <Text style={styles.loadingText}>Loading statistics...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -41,7 +102,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <Text style={styles.subtitle}>Offline Bluetooth P2P Communication</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Message Statistics</Text>
           <View style={styles.statsGrid}>
@@ -89,6 +155,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Development Tools</Text>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={async () => {
+                await addSampleData();
+                await loadStats();
+              }}
+            >
+              <Text style={styles.actionButtonText}>Add Sample Data</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={async () => {
+                await clearAllData();
+                await loadStats();
+              }}
+            >
+              <Text style={styles.actionButtonText}>Clear All Data</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
       <View style={styles.navigation}>
@@ -129,6 +219,16 @@ const styles = StyleSheet.create({
     color: '#bdc3c7',
     textAlign: 'center',
     marginTop: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#7f8c8d',
   },
   content: {
     flex: 1,

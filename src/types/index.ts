@@ -1,9 +1,9 @@
 export interface Message {
   id: string;
-  text: string;
+  content: string;
   priority: Priority;
-  timestamp: Date;
-  status: MessageStatus;
+  timestamp: string; // ISO string
+  deliveryStatus: DeliveryStatus;
 }
 
 export enum Priority {
@@ -11,7 +11,7 @@ export enum Priority {
   NORMAL = 'normal'
 }
 
-export enum MessageStatus {
+export enum DeliveryStatus {
   PENDING = 'pending',
   SENT = 'sent',
   DELIVERED = 'delivered'
