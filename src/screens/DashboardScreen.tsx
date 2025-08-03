@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { AppStats, Priority, DeliveryStatus } from '../types';
+import { AppStats, Priority, DeliveryStatus, BluetoothConnectionStatus } from '../types';
 import { MessageStorage } from '../services/storage';
+import { bluetoothService } from '../services/bluetooth';
 import { addSampleData, clearAllData } from '../utils/sampleData';
 
 interface DashboardScreenProps {
@@ -25,20 +26,60 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Bluetooth states
+  const [bluetoothEnabled, setBluetoothEnabled] = useState(false);
+  const [connectedDevices, setConnectedDevices] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<BluetoothConnectionStatus>(BluetoothConnectionStatus.DISCONNECTED);
+  const [lastSync, setLastSync] = useState('Never');
 
   // Load stats on mount
   useEffect(() => {
     loadStats();
+    initializeBluetooth();
   }, []);
 
   // Load stats when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadStats();
+      updateBluetoothStatus();
     });
 
     return unsubscribe;
   }, [navigation]);
+
+  // Update Bluetooth status periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updateBluetoothStatus();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const initializeBluetooth = async () => {
+    try {
+      const enabled = await bluetoothService.isBluetoothEnabled();
+      setBluetoothEnabled(enabled);
+      updateBluetoothStatus();
+    } catch (error) {
+      console.error('Error checking Bluetooth status:', error);
+    }
+  };
+
+  const updateBluetoothStatus = () => {
+    const devices = bluetoothService.getConnectedDevices();
+    const status = bluetoothService.getConnectionStatus();
+    
+    setConnectedDevices(devices.length);
+    setConnectionStatus(status);
+    
+    // Update last sync time if connected
+    if (devices.length > 0 && status === BluetoothConnectionStatus.CONNECTED) {
+      setLastSync('Just now');
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -64,13 +105,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadStats();
+    updateBluetoothStatus();
     setRefreshing(false);
-  };
-
-  const bluetoothStatus = {
-    isEnabled: true,
-    connectedDevices: 2,
-    lastSync: '2 minutes ago',
   };
 
   const StatCard = ({ title, value, color }: { title: string; value: string | number; color: string }) => (
@@ -122,18 +158,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <View style={styles.statusCard}>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Bluetooth:</Text>
-              <View style={[styles.statusIndicator, bluetoothStatus.isEnabled && styles.statusOnline]} />
+              <View style={[styles.statusIndicator, bluetoothEnabled && styles.statusOnline]} />
               <Text style={styles.statusText}>
-                {bluetoothStatus.isEnabled ? 'Enabled' : 'Disabled'}
+                {bluetoothEnabled ? 'Enabled' : 'Disabled'}
               </Text>
             </View>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Connected Devices:</Text>
-              <Text style={styles.statusText}>{bluetoothStatus.connectedDevices}</Text>
+              <Text style={styles.statusText}>{connectedDevices}</Text>
+            </View>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Connection Status:</Text>
+              <Text style={[styles.statusText, connectionStatus === BluetoothConnectionStatus.CONNECTED && styles.connectedStatus]}>
+                {connectionStatus}
+              </Text>
             </View>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Last Sync:</Text>
-              <Text style={styles.statusText}>{bluetoothStatus.lastSync}</Text>
+              <Text style={styles.statusText}>{lastSync}</Text>
             </View>
           </View>
         </View>
@@ -312,6 +354,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7f8c8d',
     fontWeight: 'bold',
+  },
+  connectedStatus: {
+    color: '#27ae60',
   },
   actionButtons: {
     flexDirection: 'row',

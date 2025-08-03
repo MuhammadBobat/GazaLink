@@ -17,18 +17,25 @@ Build a practical, offline-capable Bluetooth P2P communication tool optimized fo
 
 ## 📱 Current Implementation
 
-This initial version includes:
+This version includes:
 
 ### Screens
-1. **MessageQueueScreen**: Displays a list of messages with priority indicators and status
+1. **MessageQueueScreen**: 
+   - Displays a list of messages with priority indicators and status
+   - **NEW**: Tab-based interface with Messages and Bluetooth tabs
+   - **NEW**: Bluetooth device scanning and connection management
 2. **MessageCreateScreen**: Form for creating new messages with text input and priority selector
-3. **DashboardScreen**: Shows basic stats (total messages, pending messages, urgent messages) and Bluetooth status
+3. **DashboardScreen**: Shows real-time statistics and Bluetooth connection status
 
 ### Features
 - Clean, modern UI with consistent styling
 - Navigation between all three screens
 - Priority-based message categorization (Urgent/Normal)
-- Mock data for demonstration purposes
+- **NEW**: Bluetooth device discovery and scanning
+- **NEW**: Device connection and disconnection management
+- **NEW**: Real-time Bluetooth status monitoring
+- **NEW**: Tab-based interface for better organization
+- Persistent local storage with AsyncStorage
 - Responsive design with proper spacing and shadows
 
 ## 🛠 Technical Stack
@@ -36,8 +43,8 @@ This initial version includes:
 - **Frontend**: React Native + TypeScript
 - **Navigation**: React Navigation v6
 - **UI Framework**: Expo
-- **Local Storage**: AsyncStorage (planned)
-- **Bluetooth**: react-native-ble-plx (planned)
+- **Local Storage**: AsyncStorage ✅
+- **Bluetooth**: react-native-ble-plx ✅
 - **Backend**: Python + FastAPI + PyTorch/TensorFlow (planned)
 
 ## 📦 Installation & Setup
@@ -79,9 +86,15 @@ GazaLink/
 │   │   ├── MessageQueueScreen.tsx
 │   │   ├── MessageCreateScreen.tsx
 │   │   └── DashboardScreen.tsx
+│   ├── services/
+│   │   ├── storage.ts
+│   │   └── bluetooth.ts
+│   ├── components/
+│   │   └── BluetoothDeviceList.tsx
 │   ├── types/
 │   │   └── index.ts
-│   └── components/
+│   └── utils/
+│       └── sampleData.ts
 ├── App.tsx
 ├── package.json
 └── README.md
@@ -106,19 +119,31 @@ The app features a clean, modern interface with:
 
 ## 🚧 Next Steps
 
-### Phase 1: Core Functionality
-- [ ] Implement local storage with AsyncStorage
-- [ ] Add Bluetooth connectivity with react-native-ble-plx
-- [ ] Create message persistence and queue management
-- [ ] Implement device discovery and pairing
+### Phase 1: Core Functionality ✅
+- [x] Implement local storage with AsyncStorage
+- [x] Create message persistence and queue management
+- [x] Add message sorting by priority and timestamp
 
-### Phase 2: Advanced Features
+### Phase 2: Local Storage ✅
+- [x] Implement local storage with AsyncStorage
+- [x] Add message persistence and queue management
+- [x] Create CRUD operations for messages
+- [x] Add real-time statistics and dashboard
+
+### Phase 3: Bluetooth Connectivity ✅
+- [x] Add Bluetooth connectivity with react-native-ble-plx
+- [x] Implement device discovery and scanning
+- [x] Add device connection and disconnection
+- [x] Create Bluetooth device list component
+- [x] Add tab-based interface for messages and Bluetooth
+
+### Phase 4: Advanced Features
 - [ ] Add message encryption for security
 - [ ] Implement message routing algorithms
 - [ ] Create offline-first data synchronization
 - [ ] Add message delivery confirmation
 
-### Phase 3: Backend Integration
+### Phase 5: Backend Integration
 - [ ] Develop Python FastAPI backend
 - [ ] Implement Deep Q-Learning agent
 - [ ] Add network optimization algorithms
