@@ -183,6 +183,9 @@ class BluetoothService {
       _connectionStatus = BluetoothConnectionStatus.connected;
       
       developer.log('Successfully connected to real device: ${deviceInfo.name}', name: 'BluetoothService');
+      
+      // Trigger message queue synchronization upon connection
+      await syncMessageQueues();
     } catch (e) {
       developer.log('Error connecting to device: $e', name: 'BluetoothService');
       _connectionStatus = BluetoothConnectionStatus.error;
@@ -219,6 +222,34 @@ class BluetoothService {
     } catch (e) {
       developer.log('Error disconnecting from device: $e', name: 'BluetoothService');
       _connectionStatus = BluetoothConnectionStatus.error;
+      rethrow;
+    }
+  }
+
+  // Sync message queues with connected device
+  Future<void> syncMessageQueues() async {
+    try {
+      developer.log('Starting message queue synchronization...', name: 'BluetoothService');
+      
+      if (_connectedDevices.isEmpty) {
+        developer.log('No connected devices to sync with', name: 'BluetoothService');
+        return;
+      }
+
+      // Get local message queue from storage service
+      // Note: This will be implemented in the next step when we integrate with StorageService
+      developer.log('Message queue sync initiated with ${_connectedDevices.length} connected device(s)', name: 'BluetoothService');
+      
+      // TODO: Implement JSON exchange of message queues
+      // This function will be expanded in subsequent steps to:
+      // 1. Retrieve local message queue
+      // 2. Send queue to connected device
+      // 3. Receive queue from connected device
+      // 4. Merge queues and avoid duplicates
+      // 5. Update delivery statuses
+      
+    } catch (e) {
+      developer.log('Error during message queue sync: $e', name: 'BluetoothService');
       rethrow;
     }
   }
