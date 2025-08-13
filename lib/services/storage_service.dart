@@ -94,4 +94,67 @@ class StorageService {
           .length,
     };
   }
+
+  // Step 1: Serialize local message queue into JSON string, including all message fields
+  Future<String> getMessagesAsJson() async {
+    try {
+      final messages = await getMessages();
+      final jsonString = jsonEncode(messages.map((m) => m.toJson()).toList());
+      return jsonString;
+    } catch (e) {
+      throw Exception('Failed to serialize messages to JSON: $e');
+    }
+  }
+
+  // Step 2: Deserialize JSON string of messages and merge into local queue without duplicates
+  Future<void> mergeIncomingMessages(String jsonMessages) async {
+    try {
+      final List<dynamic> messagesData = jsonDecode(jsonMessages);
+      final List<Message> incomingMessages = messagesData
+          .map((data) => Message.fromJson(data))
+          .toList();
+      
+      final List<Message> localMessages = await getMessages();
+      final List<Message> mergedMessages = List.from(localMessages);
+      
+      for (final incomingMessage in incomingMessages) {
+        // Check if message already exists by ID
+        final existingIndex = mergedMessages.indexWhere(
+          (local) => local.id == incomingMessage.id
+        );
+        
+        if (existingIndex == -1) {
+          // New message - add it
+          mergedMessages.add(incomingMessage);
+        } else {
+          // Existing message - update if incoming is newer or has better status
+          final existing = mergedMessages[existingIndex];
+          if (incomingMessage.timestamp.isAfter(existing.timestamp) ||
+              incomingMessage.deliveryStatus.index > existing.deliveryStatus.index) {
+            mergedMessages[existingIndex] = incomingMessage;
+          }
+        }
+      }
+      
+      // Save merged messages
+      await _saveMessages(mergedMessages);
+    } catch (e) {
+      throw Exception('Failed to merge incoming messages: $e');
+    }
+  }
+
+  // Step 5: Update delivery status when message is confirmed as received by another device
+  Future<void> updateDeliveryStatus(String messageId, DeliveryStatus status) async {
+    try {
+      final messages = await getMessages();
+      final index = messages.indexWhere((m) => m.id == messageId);
+      
+      if (index != -1) {
+        messages[index] = messages[index].copyWith(deliveryStatus: status);
+        await _saveMessages(messages);
+      }
+    } catch (e) {
+      throw Exception('Failed to update delivery status: $e');
+    }
+  }
 }
